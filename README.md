@@ -1,152 +1,115 @@
-# SDN Flow Rule Timeout Manager using Ryu and Mininet
+# Flow Rule Timeout Manager using Ryu and Mininet
 
+## Overview
+This project demonstrates dynamic flow rule management in Software Defined Networking (SDN) using a Ryu controller and Mininet. The controller installs a temporary drop rule to block traffic from a specific host and automatically removes it after a fixed timeout, allowing normal communication to resume. This showcases the lifecycle of flow rules and centralized control in SDN.
 
-#Problem Statement
-This project demonstrates flow rule lifecycle in Software Defined Networking (SDN) using a Ryu controller and Mininet.
-The controller dynamically installs a drop rule with timeout, blocks traffic, and automatically restores connectivity after rule expiration.
+## Objectives
+- Demonstrate controller–switch interaction using OpenFlow
+- Implement match–action based flow rules
+- Show blocking and recovery of network traffic
+- Analyze network behavior using ping and iperf
+- Demonstrate flow rule lifecycle and timeout handling
 
-#Objectives
+## Topology
 
-* Demonstrate controller–switch interaction
-* Implement match–action flow rules
-* Show blocking and recovery behavior
-* Observe flow lifecycle using timeout
-* Analyze network performance using ping and iperf
-
-#Topology
-
-A simple Mininet topology is used:
-
+A simple topology is used:
 
 h1 ----\
         >---- s1 ---- Controller (Ryu)
 h2 ----/
 
+- Hosts: h1, h2
+- Switch: s1 (Open vSwitch)
+- Controller: Ryu
+- Protocol: OpenFlow 1.3
 
-* Hosts: h1, h2
-* Switch: s1 (Open vSwitch)
-* Controller: Ryu
-* Protocol: OpenFlow 1.3
+## Technologies Used
+- Python (Ryu Controller)
+- Mininet
+- Open vSwitch
+- OpenFlow 1.3
+- iperf
 
-# Setup Requirements
+## Setup and Execution
 
-* Ubuntu (VM / AWS)
-* Python3
-* Mininet
-* Ryu Controller
-* Wireshark (optional)
+### 1. Start the Ryu Controller
 
-#Execution Steps
- 1. Start Controller
-
-bash
 source ~/ryu-env/bin/activate
 python3 -m ryu.cmd.manager timeout_controller.py
 
-2. Start Mininet
 
-bash
+### 2. Start Mininet
+
 sudo mn -c
 sudo mn --topo single,2 --controller remote,ip=127.0.0.1,port=6633 --switch ovsk,protocols=OpenFlow13
-3. Clear Previous Flows
-
-bash
-mininet> dpctl del-flows
-
-#Testing & Demonstration
-
- Scenario 1: Blocking Traffic
-
-bash
-mininet> h1 ping -c 2 h2
 
 
-Output:
+## Demonstration Steps
 
-* Destination Host Unreachable
-* Controller log: `BLOCKING h1 TRAFFIC`
-bash
+### Scenario 1: Blocking Traffic
+
+mininet> h1 ping -c 3 h2
+
+Expected:
+- Destination Host Unreachable
+- Controller logs show blocking
+
+Start iperf:
+
+mininet> h2 iperf -s &
 mininet> h1 iperf -c h2
 
-Observation:
+Expected:
+- Low or unstable throughput
 
-* Throughput is zero or very low
-* Traffic is blocked
+### Wait for Timeout
+- Wait approximately 10 seconds
+- Controller logs display: FLOW EXPIRED
 
-# Wait for Timeout (~10 seconds)
+### Scenario 2: Recovery After Timeout
 
-Controller log:
+mininet> h1 ping -c 3 h2
+
+Expected:
+- Successful ping replies
 
 
-FLOW EXPIRED
-
-#Scenario 2: Recovery After Timeout
-
-bash
-mininet> h1 ping -c 2 h2
-
-Output:
-
-* Successful ping
-
-bash
 mininet> h1 iperf -c h2
 
-Output:
+Expected:
+- Stable throughput (~20+ Mbits/sec)
 
-* Non-zero throughput (~20+ Mbits/sec)
+## Flow Table Inspection (Optional)
 
-Observation:
-
-* Communication restored after rule expiration
-
-
-# Regression Test
-
-bash
-mininet> dpctl del-flows
-mininet> h1 ping -c 2 h2
-(wait)
-mininet> h1 ping -c 2 h2
-
-Observation:
-
-* Same behavior repeats consistently
-* Confirms reliability of controller logic
-
- Flow Table Inspection
-bash
 mininet> dpctl dump-flows
 
 
-* Before timeout → shows drop rule
-* After timeout → rule removed
+- During blocking: drop rule present
+- After timeout: rule removed or inactive
 
-# Wireshark Analysis (Optional)
+## Key Concepts
+- Software Defined Networking (SDN)
+- Control plane and data plane separation
+- OpenFlow protocol
+- Match–action flow rules
+- Hard timeout
+- Flow rule lifecycle
 
-Filter:
+## Results
+- Traffic is initially blocked using a drop rule
+- The rule expires automatically after 10 seconds
+- Communication is restored without manual intervention
+- Throughput improves after rule expiration
 
-```
-icmp
-```
+## Conclusion
+This project demonstrates how SDN enables dynamic and programmable network control. By using timed flow rules, the controller can enforce temporary policies such as blocking and automatically restore connectivity, highlighting the flexibility and power of SDN-based networks.
 
-# During Blocking:
+## How to Run
+1. Start the Ryu controller
+2. Start Mininet with remote controller
+3. Run ping to observe blocking
+4. Run iperf to analyze throughput
+5. Wait for timeout and observe recovery
 
-* ICMP request seen
-* No reply
-
-### After Timeout:
-
-* ICMP request + reply
-
-
-#Key Concepts Used
-
-* Software Defined Networking (SDN)
-* OpenFlow Protocol
-* Match–Action Flow Rules
-* PacketIn / PacketOut
-* Hard Timeout
-* Flow Rule Lifecycle
-
-
+## Author
+Manasi Sabnis
